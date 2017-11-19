@@ -11,15 +11,15 @@
 //    _syndromeX_h(_numEqsX,0), _syndromeX_d(_numEqsX,0),
 //    _syndromeZ_h(_numEqsZ,0), _syndromeZ_d(_numEqsZ,0),
 //    // allocate host and device memory for var node updates
-//    _varNodesX_h(_numVars,_numEqsX,0), _varNodesZ_h(_numVars,_numEqsZ,0), 
+//    _varNodesX(_numVars,_numEqsX,0), _varNodesZ(_numVars,_numEqsZ,0), 
 //    _varNodesX_d(_numVars,_numEqsX,0), _varNodesZ_d(_numVars,_numEqsZ,0),
 //    // allocate host and device memory for check node updates
-//    _eqNodesX_h(_numEqsX,_numVars,0), _eqNodesZ_h(_numEqsZ,_numVars,0), 
+//    _eqNodesX(_numEqsX,_numVars,0), _eqNodesZ(_numEqsZ,_numVars,0), 
 //    _eqNodesX_d(_numEqsX,_numVars,0), _checkNodesZ_d(_numEqsZ,_numVars,0),
 //    // allocate host and device memory for index matrices
-//    _eqNodeVarIndicesX_h(_numEqsX, L), _eqNodeVarIndicesZ_h(_numEqsZ, L),
+//    _eqNodeVarIndicesX(_numEqsX, L), _eqNodeVarIndicesZ(_numEqsZ, L),
 //    _eqNodeVarIndicesX_d(_numEqsX, L), _eqNodeVarIndicesZ_d(_numEqsZ, L),
-//    _varNodeEqIndicesX_h(_numVars,J), _varNodeEqIndicesZ_h(_numVars, K),
+//    _varNodeEqIndicesX(_numVars,J), _varNodeEqIndicesZ(_numVars, K),
 //    _varNodeEqIndicesX_d(_numVars, J), _varNodeEqIndicesZ_d(_numVars, K),
 //    _errorGenerator(_numVars)
 //{
@@ -131,22 +131,22 @@
 //    }
 //
 //    // set index arrays and device pointers
-//    SetIndexArrays(_eqNodeVarIndicesX_h, _varNodeEqIndicesX_h, _pcmX_h);
-//    thrust::copy(_eqNodeVarIndicesX_h.values.begin(), _eqNodeVarIndicesX_h.values.end(), _eqNodeVarIndicesX_d.values.begin());
-//    thrust::copy(_varNodeEqIndicesX_h.values.begin(), _varNodeEqIndicesX_h.values.end(), _varNodeEqIndicesX_d.values.begin());
+//    SetIndexArrays(_eqNodeVarIndicesX, _varNodeEqIndicesX, _pcmX_h);
+//    thrust::copy(_eqNodeVarIndicesX.values.begin(), _eqNodeVarIndicesX.values.end(), _eqNodeVarIndicesX_d.values.begin());
+//    thrust::copy(_varNodeEqIndicesX.values.begin(), _varNodeEqIndicesX.values.end(), _varNodeEqIndicesX_d.values.begin());
 //    _eqNodeVarIndicesX_d_ptr = thrust::raw_pointer_cast(&_eqNodeVarIndicesX_d.values[0]);
 //    _varNodeEqIndicesX_d_ptr = thrust::raw_pointer_cast(&_varNodeEqIndicesX_d.values[0]);
 //
-//    SetIndexArrays(_eqNodeVarIndicesZ_h, _varNodeEqIndicesZ_h, _pcmZ_h);
-//    thrust::copy(_eqNodeVarIndicesZ_h.values.begin(), _eqNodeVarIndicesZ_h.values.end(), _eqNodeVarIndicesZ_d.values.begin());
-//    thrust::copy(_varNodeEqIndicesZ_h.values.begin(), _varNodeEqIndicesZ_h.values.end(), _varNodeEqIndicesZ_d.values.begin());
+//    SetIndexArrays(_eqNodeVarIndicesZ, _varNodeEqIndicesZ, _pcmZ_h);
+//    thrust::copy(_eqNodeVarIndicesZ.values.begin(), _eqNodeVarIndicesZ.values.end(), _eqNodeVarIndicesZ_d.values.begin());
+//    thrust::copy(_varNodeEqIndicesZ.values.begin(), _varNodeEqIndicesZ.values.end(), _varNodeEqIndicesZ_d.values.begin());
 //    _eqNodeVarIndicesZ_d_ptr = thrust::raw_pointer_cast(&_eqNodeVarIndicesZ_d.values[0]);
 //    _varNodeEqIndicesZ_d_ptr = thrust::raw_pointer_cast(&_varNodeEqIndicesZ_d.values[0]);
 //
-//    _numEqsPerVarX = _varNodeEqIndicesX_h.num_cols;
-//    _numVarsPerEqX = _eqNodeVarIndicesX_h.num_cols;
-//    _numEqsPerVarZ = _varNodeEqIndicesZ_h.num_cols;
-//    _numVarsPerEqZ = _eqNodeVarIndicesZ_h.num_cols;
+//    _numEqsPerVarX = _varNodeEqIndicesX.num_cols;
+//    _numVarsPerEqX = _eqNodeVarIndicesX.num_cols;
+//    _numEqsPerVarZ = _varNodeEqIndicesZ.num_cols;
+//    _numVarsPerEqZ = _eqNodeVarIndicesZ.num_cols;
 //
 //    // set device memory pointers for pre-allocated device matrices
 //    _syndromeX_d_ptr = thrust::raw_pointer_cast(&_syndromeX_d[0]);
@@ -174,16 +174,16 @@
 //    // each variable will be involved in J equations
 //    // loop over all check node equations in the parity check matrix for X errors    
 //    int numEqs = parityCheckMatrix.num_rows;
-//    int numVars = parityCheckMatrix.num_cols;
+//    int n = parityCheckMatrix.num_cols;
 //    std::vector<std::vector<int>> cnVarIndices(numEqs, std::vector<int>());
-//    std::vector<std::vector<int>> vnEqIndices(numVars, std::vector<int>());
+//    std::vector<std::vector<int>> vnEqIndices(n, std::vector<int>());
 //    // loop over all equations
 //    for (int eqIdx = 0; eqIdx < numEqs; ++eqIdx)
 //    {
 //        // loop over all variables
-//        for (int varIdx = 0; varIdx < numVars; ++varIdx)
+//        for (int varIdx = 0; varIdx < n; ++varIdx)
 //        {
-//            int pcmIdx = eqIdx * numVars + varIdx;
+//            int pcmIdx = eqIdx * n + varIdx;
 //            // if the entry in the pcm is 1, this check node involves this variable.  set the index entry
 //            if (parityCheckMatrix.values[pcmIdx])
 //            {
@@ -337,37 +337,37 @@
 //    float low = 0.01f;
 //    
 //    // clear var node and check node arrays, and set syndrome arrays
-//    for (int i = 0; i < _varNodesX_h.num_entries; ++i) _varNodesX_h.values[i] = 0;
-//    for (int i = 0; i < _varNodesZ_h.num_entries; ++i) _varNodesZ_h.values[i] = 0;
-//    int numVarsPerEq = _eqNodeVarIndicesX_h.num_cols;
+//    for (int i = 0; i < _varNodesX.num_entries; ++i) _varNodesX.values[i] = 0;
+//    for (int i = 0; i < _varNodesZ.num_entries; ++i) _varNodesZ.values[i] = 0;
+//    int numVarsPerEq = _eqNodeVarIndicesX.num_cols;
 //    for (int eqIdx = 0; eqIdx<_numEqsX; ++eqIdx)
 //    {
 //        for (int j = 0; j<numVarsPerEq; ++j)
 //        {
 //            int idx = eqIdx * numVarsPerEq + j;
-//            int varIdx = _eqNodeVarIndicesX_h.values[idx];
+//            int varIdx = _eqNodeVarIndicesX.values[idx];
 //            int varNodeIdx = varIdx * _numEqsX + eqIdx;
-//            _varNodesX_h.values[varNodeIdx] = p;
+//            _varNodesX.values[varNodeIdx] = p;
 //        }
 //    }
 //    for (int eqIdx = 0; eqIdx<_numEqsZ; ++eqIdx)
 //    {
-//        for (int j = 0; j<_eqNodeVarIndicesZ_h.num_cols; ++j)
+//        for (int j = 0; j<_eqNodeVarIndicesZ.num_cols; ++j)
 //        {
 //            int idx = eqIdx * numVarsPerEq + j;
-//            int varIdx = _eqNodeVarIndicesZ_h.values[idx];
+//            int varIdx = _eqNodeVarIndicesZ.values[idx];
 //            int varNodeIdx = varIdx * _numEqsX + eqIdx;
-//            _varNodesZ_h.values[varNodeIdx] = p;
+//            _varNodesZ.values[varNodeIdx] = p;
 //        }
 //    }
-//    for (int i = 0; i < _eqNodesX_h.num_entries; ++i) _eqNodesX_h.values[i] = 0.0f;
-//    for (int i = 0; i < _eqNodesZ_h.num_entries; ++i) _eqNodesZ_h.values[i] = 0.0f;
+//    for (int i = 0; i < _eqNodesX.num_entries; ++i) _eqNodesX.values[i] = 0.0f;
+//    for (int i = 0; i < _eqNodesZ.num_entries; ++i) _eqNodesZ.values[i] = 0.0f;
 //
 //    // copy host data to device
-//    thrust::copy(_varNodesX_h.values.begin(), _varNodesX_h.values.end(), _varNodesX_d.values.begin());
-//    thrust::copy(_varNodesZ_h.values.begin(), _varNodesZ_h.values.end(), _varNodesZ_d.values.begin());
-//    thrust::copy(_eqNodesX_h.values.begin(), _eqNodesX_h.values.end(), _eqNodesX_d.values.begin());
-//    thrust::copy(_eqNodesZ_h.values.begin(), _eqNodesZ_h.values.end(), _checkNodesZ_d.values.begin());
+//    thrust::copy(_varNodesX.values.begin(), _varNodesX.values.end(), _varNodesX_d.values.begin());
+//    thrust::copy(_varNodesZ.values.begin(), _varNodesZ.values.end(), _varNodesZ_d.values.begin());
+//    thrust::copy(_eqNodesX.values.begin(), _eqNodesX.values.end(), _eqNodesX_d.values.begin());
+//    thrust::copy(_eqNodesZ.values.begin(), _eqNodesZ.values.end(), _checkNodesZ_d.values.begin());
 //    thrust::copy(syndromeX.begin(), syndromeX.end(), _syndromeX_d.begin());
 //    thrust::copy(syndromeZ.begin(), syndromeZ.end(), _syndromeZ_d.begin());
 //
@@ -411,30 +411,30 @@
 //
 //    begin = std::chrono::high_resolution_clock::now();
 //
-//    thrust::copy(_varNodesX_d.values.begin(), _varNodesX_d.values.end(), _varNodesX_h.values.begin());
-//    thrust::copy(_varNodesZ_d.values.begin(), _varNodesZ_d.values.end(), _varNodesZ_h.values.begin());
+//    thrust::copy(_varNodesX_d.values.begin(), _varNodesX_d.values.end(), _varNodesX.values.begin());
+//    thrust::copy(_varNodesZ_d.values.begin(), _varNodesZ_d.values.end(), _varNodesZ.values.begin());
 //
 //    // accumulate the error estimates into a single vector
-//    std::vector<int> finalEstimatesX(_varNodesX_h.num_rows, 0);
-//    std::vector<int> finalEstimatesZ(_varNodesZ_h.num_rows, 0);
+//    std::vector<int> finalEstimatesX(_varNodesX.num_rows, 0);
+//    std::vector<int> finalEstimatesZ(_varNodesZ.num_rows, 0);
 //
 //    // check for correct error decoding
 //    ErrorCode code = SUCCESS;
 //    // check convergence errors
-//    for (auto varIdx = 0; varIdx < _varNodesX_h.num_rows; ++varIdx) {
-//        for (auto eqIdx = 0; eqIdx < _varNodesX_h.num_cols; ++eqIdx) {
-//            int index = varIdx * _varNodesX_h.num_cols + eqIdx;
-//            if (_varNodesX_h.values[index] >= 0.5f) // best guess of error
+//    for (auto varIdx = 0; varIdx < _varNodesX.num_rows; ++varIdx) {
+//        for (auto eqIdx = 0; eqIdx < _varNodesX.num_cols; ++eqIdx) {
+//            int index = varIdx * _varNodesX.num_cols + eqIdx;
+//            if (_varNodesX.values[index] >= 0.5f) // best guess of error
 //            {
 //                finalEstimatesX[varIdx] = 1;
 //                break;
 //            }
 //        }
 //    }
-//    for (auto varIdx = 0; varIdx < _varNodesZ_h.num_rows; ++varIdx) {
-//        for (auto eqIdx = 0; eqIdx < _varNodesZ_h.num_cols; ++eqIdx) {
-//            int index = varIdx * _varNodesZ_h.num_cols + eqIdx;
-//            if (_varNodesZ_h.values[index] >= 0.5f) // best guess of error
+//    for (auto varIdx = 0; varIdx < _varNodesZ.num_rows; ++varIdx) {
+//        for (auto eqIdx = 0; eqIdx < _varNodesZ.num_cols; ++eqIdx) {
+//            int index = varIdx * _varNodesZ.num_cols + eqIdx;
+//            if (_varNodesZ.values[index] >= 0.5f) // best guess of error
 //            {
 //                finalEstimatesZ[varIdx] = 1;
 //                break;
@@ -442,10 +442,10 @@
 //        }
 //    }
 //    // check for convergence failure
-//    if (!CheckConvergence(_varNodesX_h, high, low)) {
+//    if (!CheckConvergence(_varNodesX, high, low)) {
 //        code = code | CONVERGENCE_FAIL_X;
 //    }
-//    if (!CheckConvergence(_varNodesZ_h, high, low)) {
+//    if (!CheckConvergence(_varNodesZ, high, low)) {
 //        code = code | CONVERGENCE_FAIL_Z;
 //    }
 //    // check syndrome errors
@@ -598,85 +598,85 @@
 //    float low = 0.01f;
 //
 //    // clear var node and check node arrays, and set syndrome arrays
-//    for (int i = 0; i < _varNodesX_h.num_entries; ++i) _varNodesX_h.values[i] = 0;
-//    for (int i = 0; i < _varNodesZ_h.num_entries; ++i) _varNodesZ_h.values[i] = 0;
-//    int numVarsPerEq = _eqNodeVarIndicesX_h.num_cols;
+//    for (int i = 0; i < _varNodesX.num_entries; ++i) _varNodesX.values[i] = 0;
+//    for (int i = 0; i < _varNodesZ.num_entries; ++i) _varNodesZ.values[i] = 0;
+//    int numVarsPerEq = _eqNodeVarIndicesX.num_cols;
 //    for(int eqIdx=0; eqIdx<_numEqsX; ++eqIdx)
 //    {
 //        for(int j=0; j<numVarsPerEq; ++j)
 //        {
 //            int idx = eqIdx * numVarsPerEq + j;
-//            int varIdx = _eqNodeVarIndicesX_h.values[idx];
+//            int varIdx = _eqNodeVarIndicesX.values[idx];
 //            int varNodeIdx = varIdx * _numEqsX + eqIdx;
-//            _varNodesX_h.values[varNodeIdx] = p;
+//            _varNodesX.values[varNodeIdx] = p;
 //        }
 //    }
 //    for (int eqIdx = 0; eqIdx<_numEqsZ; ++eqIdx)
 //    {
-//        for (int j = 0; j<_eqNodeVarIndicesZ_h.num_cols; ++j)
+//        for (int j = 0; j<_eqNodeVarIndicesZ.num_cols; ++j)
 //        {
 //            int idx = eqIdx * numVarsPerEq + j;
-//            int varIdx = _eqNodeVarIndicesZ_h.values[idx];
+//            int varIdx = _eqNodeVarIndicesZ.values[idx];
 //            int varNodeIdx = varIdx * _numEqsX + eqIdx;
-//            _varNodesZ_h.values[varNodeIdx] = p;
+//            _varNodesZ.values[varNodeIdx] = p;
 //        }
 //    }
-//    for (int i = 0; i < _eqNodesX_h.num_entries; ++i) _eqNodesX_h.values[i] = 0.0f;
-//    for (int i = 0; i < _eqNodesZ_h.num_entries; ++i) _eqNodesZ_h.values[i] = 0.0f;
+//    for (int i = 0; i < _eqNodesX.num_entries; ++i) _eqNodesX.values[i] = 0.0f;
+//    for (int i = 0; i < _eqNodesZ.num_entries; ++i) _eqNodesZ.values[i] = 0.0f;
 //    for (int i = 0; i < xSyndrome.size(); ++i) _syndromeX_h[i] = xSyndrome[i];
 //    for (int i = 0; i < zSyndrome.size(); ++i) _syndromeZ_h[i] = zSyndrome[i];
 //
 //    auto N = maxIterations; // maximum number of iterations
 //    bool xConverge = false;
 //    bool zConverge = false;
-//    //WriteToFile(_varNodesX_h, "results/varX_CPU.txt");
-//    //WriteToFile(_eqNodesX_h, "results/eqX_CPU.txt");
+//    //WriteToFile(_varNodesX, "results/varX_CPU.txt");
+//    //WriteToFile(_eqNodesX, "results/eqX_CPU.txt");
 //    for (auto n = 0; n < N; n++)
 //    {
 //        if (xConverge && zConverge) break;
 //        if (!xConverge)
 //        {
-//            EqNodeUpdate(_eqNodesX_h,_varNodesX_h,_eqNodeVarIndicesX_h, _syndromeX_h);
-//            VarNodeUpdate(_eqNodesX_h, _varNodesX_h, _varNodeEqIndicesX_h ,p, n == N - 1);
-//            //WriteToFile(_varNodesX_h, "results/varX_CPU.txt");
-//            //WriteToFile(_eqNodesX_h, "results/eqX_CPU.txt");
+//            EqNodeUpdate(_eqNodesX,_varNodesX,_eqNodeVarIndicesX, _syndromeX_h);
+//            VarNodeUpdate(_eqNodesX, _varNodesX, _varNodeEqIndicesX ,p, n == N - 1);
+//            //WriteToFile(_varNodesX, "results/varX_CPU.txt");
+//            //WriteToFile(_eqNodesX, "results/eqX_CPU.txt");
 //            if (n % 10 == 0)
 //            {
-//                xConverge = CheckConvergence(_varNodesX_h, high, low);
+//                xConverge = CheckConvergence(_varNodesX, high, low);
 //            }
 //        }
 //
 //        if (!zConverge)
 //        {
-//            EqNodeUpdate(_eqNodesZ_h, _varNodesZ_h, _eqNodeVarIndicesZ_h, _syndromeZ_h);
-//            VarNodeUpdate(_eqNodesZ_h, _varNodesZ_h, _varNodeEqIndicesZ_h , p, n == N - 1);
+//            EqNodeUpdate(_eqNodesZ, _varNodesZ, _eqNodeVarIndicesZ, _syndromeZ_h);
+//            VarNodeUpdate(_eqNodesZ, _varNodesZ, _varNodeEqIndicesZ , p, n == N - 1);
 //            if (n % 10 == 0)
 //            {
-//                zConverge = CheckConvergence(_varNodesZ_h, high, low);
+//                zConverge = CheckConvergence(_varNodesZ, high, low);
 //            }
 //        }
 //    }
 //    // accumulate the error estimates into a single vector
-//    std::vector<int> finalEstimatesX(_varNodesX_h.num_rows, 0);
-//    std::vector<int> finalEstimatesZ(_varNodesZ_h.num_rows, 0);
+//    std::vector<int> finalEstimatesX(_varNodesX.num_rows, 0);
+//    std::vector<int> finalEstimatesZ(_varNodesZ.num_rows, 0);
 //
 //    // check for correct error decoding
 //    ErrorCode code = SUCCESS;
 //    // check convergence errors
-//    for (auto varIdx = 0; varIdx < _varNodesX_h.num_rows; ++varIdx) {
-//        for (auto eqIdx = 0; eqIdx < _varNodesX_h.num_cols; ++eqIdx) {
-//            int index = varIdx * _varNodesX_h.num_cols + eqIdx;
-//            if(_varNodesX_h.values[index] >= 0.5f) // best guess of error
+//    for (auto varIdx = 0; varIdx < _varNodesX.num_rows; ++varIdx) {
+//        for (auto eqIdx = 0; eqIdx < _varNodesX.num_cols; ++eqIdx) {
+//            int index = varIdx * _varNodesX.num_cols + eqIdx;
+//            if(_varNodesX.values[index] >= 0.5f) // best guess of error
 //            {
 //                finalEstimatesX[varIdx] = 1;
 //                break;
 //            }
 //        }
 //    }
-//    for (auto varIdx = 0; varIdx < _varNodesZ_h.num_rows; ++varIdx) {
-//        for (auto eqIdx = 0; eqIdx < _varNodesZ_h.num_cols; ++eqIdx) {
-//            int index = varIdx * _varNodesZ_h.num_cols + eqIdx;
-//            if (_varNodesZ_h.values[index] >= 0.5f) // best guess of error
+//    for (auto varIdx = 0; varIdx < _varNodesZ.num_rows; ++varIdx) {
+//        for (auto eqIdx = 0; eqIdx < _varNodesZ.num_cols; ++eqIdx) {
+//            int index = varIdx * _varNodesZ.num_cols + eqIdx;
+//            if (_varNodesZ.values[index] >= 0.5f) // best guess of error
 //            {
 //                finalEstimatesZ[varIdx] = 1;
 //                break;
@@ -684,11 +684,11 @@
 //        }
 //    }
 //    // check for convergence failure
-//    if (!CheckConvergence(_varNodesX_h, high, low)) {
+//    if (!CheckConvergence(_varNodesX, high, low)) {
 //        code = code | CONVERGENCE_FAIL_X;
-////        WriteToFile(_varNodesX_h, "results/convXCPU.txt");
+////        WriteToFile(_varNodesX, "results/convXCPU.txt");
 //    }
-//    if (!CheckConvergence(_varNodesZ_h, high, low)) code = code | CONVERGENCE_FAIL_Z;
+//    if (!CheckConvergence(_varNodesZ, high, low)) code = code | CONVERGENCE_FAIL_Z;
 //    // check syndrome errors
 //    auto xS = GetXSyndrome(finalEstimatesX);
 //    if (!std::equal(xSyndrome.begin(), xSyndrome.end(), xS.begin())) { code = code | SYNDROME_FAIL_X; }
@@ -711,7 +711,7 @@
 //    //                                      = 0.5 * (1 + (1-2pb)(1-2pc)(1-2pd))
 //    int numEqs = eqNodes.num_rows;
 //    int numVarsPerEq = eqNodeVarIndices.num_cols;
-//    int numVars = varNodes.num_rows;
+//    int n = varNodes.num_rows;
 //    for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx) // loop over check nodes (parity equations)
 //    {
 //        int firstVarIdx = eqIdx*numVarsPerEq;
@@ -733,7 +733,7 @@
 //                float value = varNodes.values[varNodesIndex]; // belief value for this variable and this eq
 //                product *= (1.0f - 2.0f*value);
 //            }
-//            int cnIdx = eqIdx * numVars + varIdx; // index for value within the check node array to update
+//            int cnIdx = eqIdx * n + varIdx; // index for value within the check node array to update
 //            if (syndrome[eqIdx]) {
 //                eqNodes.values[cnIdx] = 0.5 * (1.0f + product); // syndrome = 1 -> odd parity
 //            }
@@ -756,16 +756,16 @@
 //    // syndrome = 1: odd # of errors -> pa' = (1-pb)(1-pc)(1-pd) + pb*pc*(1-pd) + pb*(1-pc)*pd + (1-pb)*pc*pd
 //    //                                      = 0.5 * (1 + (1-2pb)(1-2pc)(1-2pd))
 //    int numEqs = eqNodeBeliefs.size();
-//    int numVars = varNodeEstimates.size();
+//    int n = varNodeEstimates.size();
 //
 //    for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx) // loop over check nodes (parity equations)
 //    {
-//        for (auto varIdx = 0; varIdx < numVars; ++varIdx) // loop over variables to be updated for this check node
+//        for (auto varIdx = 0; varIdx < n; ++varIdx) // loop over variables to be updated for this check node
 //        { 
 //            eqNodeBeliefs[eqIdx][varIdx] = 0.0f; // not necessary, makes file output nicer.
 //            if (!parityCheckMatrix[eqIdx][varIdx]) continue; // if the parity check matrix is 0, the eq doesn't involve this var
 //            float product = 1.0f; // reset product
-//            for (auto otherVarIdx = 0; otherVarIdx < numVars; ++otherVarIdx) // loop over all other variables, accumulate (1-2p) terms
+//            for (auto otherVarIdx = 0; otherVarIdx < n; ++otherVarIdx) // loop over all other variables, accumulate (1-2p) terms
 //            { 
 //                if (!parityCheckMatrix[eqIdx][otherVarIdx]) continue; // skip zeros
 //                if (otherVarIdx == varIdx) continue; // skip the variable being updated
@@ -784,10 +784,10 @@
 //    // p1' = K*pch*p2*p3*p4   (pch is the channel error probability. ignore the estimate received from check node 1 unless last)
 //    // where K = 1/[(1-pch)(1-p2)(1-p3)(1-p4)... + pch*p2*p3*p4...]
 //    int numEqs = eqNodes.num_rows;
-//    int numVars = varNodes.num_rows;
+//    int n = varNodes.num_rows;
 //    int numEqsPerVar = varNodeEqIndices.num_cols;
 //    
-//    for (auto varIdx = 0; varIdx < numVars; ++varIdx) // loop over all variables
+//    for (auto varIdx = 0; varIdx < n; ++varIdx) // loop over all variables
 //    {
 //        int firstVarNode = varIdx * numEqs; // start of entries in VarNodes array for this variable
 //        int firstEqIndices = varIdx * numEqsPerVar; // starting point for first equation in the index list for this var.
@@ -812,7 +812,7 @@
 //
 //                if (otherEQIdx == eqIdx && !last) continue; 
 //                // 1d index for check nodes belief being used
-//                int checkNodesIdx = otherEQIdx * numVars + varIdx; 
+//                int checkNodesIdx = otherEQIdx * n + varIdx; 
 //                float p = eqNodes.values[checkNodesIdx];
 //
 //                prodOneMinusP *= (1.0f - p);
@@ -833,8 +833,8 @@
 //    // p1' = K*pch*p2*p3*p4   (pch is the channel error probability. ignore the estimate received from check node 1)
 //    // where K = 1/[(1-p1)(1-p2)(1-p3)... + p1*p2*p3...]
 //    int numEqs = eqNodeBeliefs.size();
-//    int numVars = varNodeEstimates.size();
-//    for (auto varIdx = 0; varIdx < numVars; ++varIdx) // loop over all variables
+//    int n = varNodeEstimates.size();
+//    for (auto varIdx = 0; varIdx < n; ++varIdx) // loop over all variables
 //    {
 //        for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx) // loop over all equations
 //        {
@@ -893,14 +893,14 @@
 //
 //void QC_LDPC_CSS::InitVarNodesArray(FloatArray2d_h& varNodes_h, FloatArray2d_d& varNodes_d, const IntArray2d_h& parityCheckMatrix, const int NUM_CONCURRENT_THREADS, float errorProbability)
 //{
-//    int numVars = parityCheckMatrix.num_cols;
+//    int n = parityCheckMatrix.num_cols;
 //    int numEqs = parityCheckMatrix.num_rows;
-//    int size = numVars*numEqs;
-//    for (int varIdx = 0; varIdx < numVars; ++varIdx)
+//    int size = n*numEqs;
+//    for (int varIdx = 0; varIdx < n; ++varIdx)
 //    {
 //        for (int eqIdx = 0; eqIdx < numEqs; ++eqIdx)
 //        {
-//            int pcmIdx = eqIdx * numVars + varIdx;
+//            int pcmIdx = eqIdx * n + varIdx;
 //            for (int n = 0; n<NUM_CONCURRENT_THREADS; ++n)
 //            {
 //                if (!parityCheckMatrix.values[pcmIdx]) continue;

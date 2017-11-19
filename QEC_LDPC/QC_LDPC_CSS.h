@@ -52,22 +52,22 @@
 //    IntArray1d_d _syndromeZ_d;
 //    int* _syndromeZ_d_ptr;
 //
-//    FloatArray2d_h _varNodesX_h;
-//    FloatArray2d_h _varNodesZ_h;
+//    FloatArray2d_h _varNodesX;
+//    FloatArray2d_h _varNodesZ;
 //    FloatArray2d_d _varNodesX_d;
 //    FloatArray2d_d _varNodesZ_d;
 //    float* _varNodesX_d_ptr;
 //    float* _varNodesZ_d_ptr;
 //
-//    FloatArray2d_h _eqNodesX_h;
-//    FloatArray2d_h _eqNodesZ_h;
+//    FloatArray2d_h _eqNodesX;
+//    FloatArray2d_h _eqNodesZ;
 //    FloatArray2d_d _eqNodesX_d;
 //    FloatArray2d_d _checkNodesZ_d;
 //    float* _eqNodesX_d_ptr;
 //    float* _eqNodesZ_d_ptr;
 //
-//    IntArray2d_h _eqNodeVarIndicesX_h;
-//    IntArray2d_h _eqNodeVarIndicesZ_h;
+//    IntArray2d_h _eqNodeVarIndicesX;
+//    IntArray2d_h _eqNodeVarIndicesZ;
 //    IntArray2d_d _eqNodeVarIndicesX_d;
 //    IntArray2d_d _eqNodeVarIndicesZ_d;
 //    int* _eqNodeVarIndicesX_d_ptr;
@@ -78,8 +78,8 @@
 //    int _numEqsPerVarZ;
 //    int _numVarsPerEqZ;
 //
-//    IntArray2d_h _varNodeEqIndicesX_h;
-//    IntArray2d_h _varNodeEqIndicesZ_h;
+//    IntArray2d_h _varNodeEqIndicesX;
+//    IntArray2d_h _varNodeEqIndicesZ;
 //    IntArray2d_d _varNodeEqIndicesX_d;
 //    IntArray2d_d _varNodeEqIndicesZ_d;
 //    int* _varNodeEqIndicesX_d_ptr;

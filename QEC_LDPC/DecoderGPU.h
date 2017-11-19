@@ -281,14 +281,14 @@ private:
 public:
 
     DecoderGPU(Quantum_LDPC_Code code) : Decoder(code),
-        _eqNodeVarIndicesX_h(code.numCodeEqsX, code.L), _eqNodeVarIndicesZ_h(code.numCodeEqsZ, code.L),
-        _varNodeEqIndicesX_h(code.numVars, code.numCodeEqsX/code.P), _varNodeEqIndicesZ_h(code.numVars, code.numCodeEqsZ/code.P),
-        _eqNodesX_h(code.numCodeEqsX, code.numVars, 0.0f), _eqNodesZ_h(code.numCodeEqsZ, code.numVars, 0.0f),
-        _varNodesX_h(code.numVars, code.numCodeEqsX, 0.0f), _varNodesZ_h(code.numVars, code.numCodeEqsZ, 0.0f),
-        _eqNodeVarIndicesX_d(code.numCodeEqsX, code.L), _eqNodeVarIndicesZ_d(code.numCodeEqsZ, code.L),
-        _varNodeEqIndicesX_d(code.numVars, code.numCodeEqsX / code.P), _varNodeEqIndicesZ_d(code.numVars, code.numCodeEqsZ / code.P),
-        _eqNodesX_d(code.numCodeEqsX, code.numVars, 0.0f), _eqNodesZ_d(code.numCodeEqsZ, code.numVars, 0.0f),
-        _varNodesX_d(code.numVars, code.numCodeEqsX, 0.0f), _varNodesZ_d(code.numVars, code.numCodeEqsZ, 0.0f)
+        _eqNodeVarIndicesX_h(code.numEqsX, code.L), _eqNodeVarIndicesZ_h(code.numEqsZ, code.L),
+        _varNodeEqIndicesX_h(code.n, code.numEqsX/code.P), _varNodeEqIndicesZ_h(code.n, code.numEqsZ/code.P),
+        _eqNodesX_h(code.numEqsX, code.n, 0.0f), _eqNodesZ_h(code.numEqsZ, code.n, 0.0f),
+        _varNodesX_h(code.n, code.numEqsX, 0.0f), _varNodesZ_h(code.n, code.numEqsZ, 0.0f),
+        _eqNodeVarIndicesX_d(code.numEqsX, code.L), _eqNodeVarIndicesZ_d(code.numEqsZ, code.L),
+        _varNodeEqIndicesX_d(code.n, code.numEqsX / code.P), _varNodeEqIndicesZ_d(code.n, code.numEqsZ / code.P),
+        _eqNodesX_d(code.numEqsX, code.n, 0.0f), _eqNodesZ_d(code.numEqsZ, code.n, 0.0f),
+        _varNodesX_d(code.n, code.numEqsX, 0.0f), _varNodesZ_d(code.n, code.numEqsZ, 0.0f)
     {
         InitIndexArrays(_eqNodeVarIndicesX_h, _varNodeEqIndicesX_h, code.pcmX);
         thrust::copy(_varNodeEqIndicesX_h.values.begin(), _varNodeEqIndicesX_h.values.end(), _varNodeEqIndicesX_d.values.begin());
@@ -345,10 +345,10 @@ public:
         WriteToFile(_varNodesX_h, "results/varNodesX.txt");
 
         beliefPropogation_kernel <<<1, 1 >>> (_eqNodesX_d_ptr, _varNodesX_d_ptr, _eqNodeVarIndicesX_d_ptr, _varNodeEqIndicesX_d_ptr,
-            syndromeX_d_ptr, p, _code.numVars, _code.numCodeEqsX, _eqNodeVarIndicesX_h.num_cols, _varNodeEqIndicesX_h.num_cols, maxIterations);
+            syndromeX_d_ptr, p, _code.n, _code.numEqsX, _eqNodeVarIndicesX_h.num_cols, _varNodeEqIndicesX_h.num_cols, maxIterations);
 
         beliefPropogation_kernel <<<1, 1 >>> (_eqNodesZ_d_ptr, _varNodesZ_d_ptr, _eqNodeVarIndicesZ_d_ptr, _varNodeEqIndicesZ_d_ptr,
-            syndromeZ_d_ptr, p, _code.numVars, _code.numCodeEqsZ, _eqNodeVarIndicesZ_h.num_cols, _varNodeEqIndicesZ_h.num_cols, maxIterations);
+            syndromeZ_d_ptr, p, _code.n, _code.numEqsZ, _eqNodeVarIndicesZ_h.num_cols, _varNodeEqIndicesZ_h.num_cols, maxIterations);
 
         cudaDeviceSynchronize();
 
@@ -413,7 +413,7 @@ public:
         std::random_device rd; // random seed for mersene twister engine.  could use this exclusively, but mt is faster
         unsigned int seed = rd();
         std::mt19937 mt(seed); // engine to produce random number
-        std::uniform_int_distribution<int> indexDist(0, _code.numVars - 1); // distribution for rng of index where errror occurs
+        std::uniform_int_distribution<int> indexDist(0, _code.n - 1); // distribution for rng of index where errror occurs
         std::uniform_int_distribution<int> errorDist(0, 2); // distribution for rng of error type. x=0, y=1, z=2
 
         int convergenceFailX = 0;
@@ -448,11 +448,11 @@ public:
 //#pragma omp barrier
 
             DecoderGPU decoder(_code);
-            IntArray1d_h xErrors(_code.numVars, 0);
-            IntArray1d_h zErrors(_code.numVars, 0);
+            IntArray1d_h xErrors(_code.n, 0);
+            IntArray1d_h zErrors(_code.n, 0);
 
-            IntArray1d_h xDecodedErrors(_code.numVars, 0);
-            IntArray1d_h zDecodedErrors(_code.numVars, 0);
+            IntArray1d_h xDecodedErrors(_code.n, 0);
+            IntArray1d_h zDecodedErrors(_code.n, 0);
 
             for (int c = 0; c < count; ++c) {
 
@@ -505,12 +505,12 @@ public:
                 { // the decoder thinks it correctly decoded the error
                   // check for logical errors
                   // What is e'-e?
-                    IntArray1d_h xDiff(_code.numVars, 0);
-                    IntArray1d_h zDiff(_code.numVars, 0);
+                    IntArray1d_h xDiff(_code.n, 0);
+                    IntArray1d_h zDiff(_code.n, 0);
 
                     bool xIsDiff = false;
                     bool zIsDiff = false;
-                    for (int i = 0; i < _code.numVars; ++i)
+                    for (int i = 0; i < _code.n; ++i)
                     {
                         if (xErrors[i] != xDecodedErrors[i]) {
                             xDiff[i] = 1;

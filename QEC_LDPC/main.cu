@@ -47,17 +47,15 @@ int main(void)
     
     std::cout << std::endl;
 	
-	int J = 3; // rows of Hc 
+	int J = 2; // rows of Hc 
 	int K = 3; // rows of Hd
 	int L = 6; // cols 
 	int P = 7;
 	int sigma = 2;
 	int tau = 3;
-    int j = 2;
-    int k = 2;
 
     //QC_LDPC_CSS code(J, K, L, P, sigma, tau);
-    Quantum_LDPC_Code code(J, K, L, P, sigma, tau, j, k);
+    Quantum_LDPC_Code code(J, K, L, P, sigma, tau);
     //DecoderGPU decoder(code);
     DecoderCPU decoder(code);
 
@@ -77,9 +75,9 @@ int main(void)
     IntArray1d_h xDecodedErrors(numVars, 0);
     IntArray1d_h zDecodedErrors(numVars, 0);
 
-    int W = 1;
-    int COUNT = 10000;
-    int MAX_ITERATIONS = 1000;
+    int W = 20;
+    int COUNT = 100000;
+    int MAX_ITERATIONS = 10000;
 
     for(auto w = 1; w <= W; ++w)
     {

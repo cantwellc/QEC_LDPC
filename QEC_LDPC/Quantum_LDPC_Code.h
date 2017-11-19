@@ -11,26 +11,22 @@ public:
     const int sigma;
     const int tau;
 
-    const int rowsX;
-    const int rowsZ;
-    const int numVars;
-
-    const int numCodeEqsX;
-    const int numCodeEqsZ;
-
-    IntArray2d_h fullMatrixX;
-    IntArray2d_h fullMatrixZ;
+    // number of physical qubits
+    const int n; 
+    const int numEqsX;
+    const int numEqsZ;
 
     IntArray2d_h pcmX;
     IntArray2d_h pcmZ;
 
-
-    Quantum_LDPC_Code(int J, int K, int L, int P, int sigma, int tau, int j, int k) :
+    Quantum_LDPC_Code(int J, int K, int L, int P, int sigma, int tau) :
         J(J), K(K), L(L), P(P), sigma(sigma), tau(tau),
-        rowsX(J * P), rowsZ(K * P), numVars(L * P), numCodeEqsX(j*P), numCodeEqsZ(k*P),
-        fullMatrixX(rowsX,numVars), fullMatrixZ(rowsZ,numVars),
-        pcmX(numCodeEqsX,numVars), pcmZ(numCodeEqsZ,numVars)
+        n(L * P), numEqsX(J*P), numEqsZ(K*P),
+        pcmX(numEqsX,n), pcmZ(numEqsZ,n)
     {
+        // only works for codes where k2 <= k1 
+        // where k2 = rows(pcmZ)-rows(pcmZ) and k1 = rows(pcmX)-rows(pcmZ) 
+        assert(numEqsZ >= numEqsX); 
         int i1, i2, i3, i4, t, p, invSigma;
 
         // index matrices for parity check matrices _pcmX_h and _pcmZ_h
@@ -115,9 +111,8 @@ public:
                                  // offset block column index by block width P: offset = cl * P
                                  // column index = (c + cjR) % P + (cl * P);
                 col = (c + cjR) % P + (cl * P);
-                int index = row * numVars + col;
-                fullMatrixX.values[index] = 1; // set value of non-zero value i
-                if (row < numCodeEqsX) pcmX.values[index] = 1;  // set value in pcm too.
+                int index = row * n + col;
+                pcmX.values[index] = 1; // set value of non-zero value i
             }
         }
 
@@ -129,9 +124,8 @@ public:
             {
                 c = hHD(ck, cl); //this is the power for the circulant permutation matrix, I(1)^c
                 col = (c + ckR) % P + (cl * P);
-                int index = row * numVars + col;
-                fullMatrixZ.values[index] = 1; // set value of non-zero value i
-                if (row < numCodeEqsZ) pcmZ.values[index] = 1;
+                int index = row * n + col;
+                pcmZ.values[index] = 1; // set value of non-zero value i
             }
         }
     }
@@ -142,13 +136,13 @@ public:
 
     IntArray1d_h GetSyndromeX(IntArray1d_h errors)
     {
-       IntArray1d_h syndrome(numCodeEqsX);
-        for (auto eqIdx = 0; eqIdx < numCodeEqsX; ++eqIdx)
+       IntArray1d_h syndrome(numEqsX);
+        for (auto eqIdx = 0; eqIdx < numEqsX; ++eqIdx)
         {
             auto x = 0;
-            for (auto varIdx = 0; varIdx < numVars; ++varIdx)
+            for (auto varIdx = 0; varIdx < n; ++varIdx)
             {
-                int pcmIdx = eqIdx * numVars + varIdx;
+                int pcmIdx = eqIdx * n + varIdx;
                 x += pcmX.values[pcmIdx] * errors[varIdx];
             }
             syndrome[eqIdx] = x % 2;
@@ -158,13 +152,13 @@ public:
 
     IntArray1d_h GetSyndromeZ(IntArray1d_h errors)
     {
-        IntArray1d_h syndrome(numCodeEqsZ);
-        for (auto eqIdx = 0; eqIdx < numCodeEqsZ; ++eqIdx)
+        IntArray1d_h syndrome(numEqsZ);
+        for (auto eqIdx = 0; eqIdx < numEqsZ; ++eqIdx)
         {
             auto x = 0;
-            for (auto varIdx = 0; varIdx < numVars; ++varIdx)
+            for (auto varIdx = 0; varIdx < n; ++varIdx)
             {
-                int pcmIdx = eqIdx * numVars + varIdx;
+                int pcmIdx = eqIdx * n + varIdx;
                 x += pcmZ.values[pcmIdx] * errors[varIdx];
             }
             syndrome[eqIdx] = x % 2;
@@ -174,7 +168,8 @@ public:
 };
 
 inline std::ostream & operator <<(std::ostream & stream, Quantum_LDPC_Code const & code) {
-    stream << "[J=" << code.J << ",K=" << code.K << ",L=" << code.L << ",P=" << code.P 
-        << ",sigma=" << code.sigma << ",tau=" << code.tau << ",j=" << code.numCodeEqsX << ",k=" << code.numCodeEqsZ << "]";
+    stream << "code: J=" << code.J << ",K=" << code.K << ",L=" << code.L << ",P=" << code.P 
+        << ",sigma=" << code.sigma << ",tau=" << code.tau 
+        << " [[n=" << code.n << ",k=" << code.numEqsZ - code.numEqsX << "]]";
     return stream;
 }

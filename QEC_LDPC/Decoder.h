@@ -38,7 +38,9 @@ public:
     }
 
     virtual ErrorCode Decode(const IntArray1d_h& syndromeX, const IntArray1d_h& syndromeZ, float errorProbability, int maxIterations,
-        IntArray1d_h& outErrorsX, IntArray1d_h& outErrorsZ) = 0;
+        IntArray1d_h& outErrorsX, IntArray1d_h& outErrorsZ) {
+        return SUCCESS;
+    }
     virtual CodeStatistics GetStatistics(int errorWeight, int numErrors, float errorProbability, 
         int maxIterations) = 0;
 };

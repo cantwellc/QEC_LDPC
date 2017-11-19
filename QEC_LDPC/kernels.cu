@@ -151,7 +151,7 @@ __global__ void eqNodeUpdate_kernel(int* eqNodeVarIndices, float* eqNodes, float
 // eqNodes holds the belief estimates each equation node has for each variable node. (0 if equation doesn't use variable)
 // varNodes holds the estimates each vaariable node has for each equation node. (0 if variable isn't used in equation)
 // errorProbability is the a priori channel error probability
-// launch numVars blocks, each block processes numEqsPerVar threads
+// launch n blocks, each block processes numEqsPerVar threads
 __global__ void varNodeUpdate_kernel(int * varNodeEqIndices, float* eqNodes, float * varNodes, 
     float errorProbability, bool last, int numVars, int numEqs, int numEqsPerVar)
 {
@@ -203,7 +203,7 @@ __global__ void varNodeUpdate_kernel(int * varNodeEqIndices, float* eqNodes, flo
 // eqNodes holds the belief estimates each equation node has for each variable node. (0 if equation doesn't use variable)
 // varNodes holds the estimates each vaariable node has for each equation node. (0 if variable isn't used in equation)
 // errorProbability is the a priori channel error probability
-// launch numVars blocks, each block processes numEqsPerVar threads
+// launch n blocks, each block processes numEqsPerVar threads
 __global__ void varNodeUpdate2_kernel(int * varNodeEqIndices, float* eqNodes, float * varNodes, 
     float errorProbability, bool last, int numVars, int numEqs, int numEqsPerVar)
 {

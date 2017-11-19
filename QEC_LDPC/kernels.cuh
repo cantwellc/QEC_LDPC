@@ -23,6 +23,6 @@ __global__ void varNodeUpdate2_kernel(int * varNodeEqIndices, float* eqNodes, fl
     float errorProbability, bool last, int numVars, int numEqs, int numEqsPerVar);
 
 __device__ bool checkConvergence(float* varNodes, int numVars, int numEqs, float high, float low);
-//__device__ void InitUpdateArrays(float* eqNodes, float* varNodes, int numVars, int numEqs, int* pcm, float errorProbability);
-//__device__ void GenerateError(int xErrors[], int zErrors[], int numVars, unsigned seed);
+//__device__ void InitUpdateArrays(float* eqNodes, float* varNodes, int n, int numEqs, int* pcm, float errorProbability);
+//__device__ void GenerateError(int xErrors[], int zErrors[], int n, unsigned seed);
 
