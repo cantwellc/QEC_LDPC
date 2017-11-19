@@ -76,8 +76,8 @@ int main(void)
     IntArray1d_h zDecodedErrors(numVars, 0);
 
     int W = 1;
-    int COUNT = 100000;
-    int MAX_ITERATIONS = 10000;
+    int COUNT = 1000;
+    int MAX_ITERATIONS = 1000;
 
     for(auto w = 1; w <= W; ++w)
     {

@@ -43,7 +43,7 @@ private:
         // each equation will include L variables.
         // each variable will be involved in J equations
         // loop over all check node equations in the parity check matrix for X errors    
-        std::vector<std::vector<int>> cnVarIndices(numEqs, std::vector<int>());
+        std::vector<std::vector<int>> eqVarIndices(numEqs, std::vector<int>());
         std::vector<std::vector<int>> vnEqIndices(numVars, std::vector<int>());
         // loop over all equations
         for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx)
@@ -55,18 +55,18 @@ private:
                 // if the entry in the pcm is 1, this check node involves this variable.  set the index entry
                 if (pcm[pcmIdx])
                 {
-                    cnVarIndices[eqIdx].push_back(varIdx);
+                    eqVarIndices[eqIdx].push_back(varIdx);
                     vnEqIndices[varIdx].push_back(eqIdx);
                 }
             }
         }
         // copy data into provided array containers
         auto index = 0;
-        for (auto i = 0; i<cnVarIndices.size(); ++i)
+        for (auto i = 0; i<eqVarIndices.size(); ++i)
         {
-            for (auto j = 0; j<cnVarIndices[0].size(); ++j)
+            for (auto j = 0; j<eqVarIndices[0].size(); ++j)
             {
-                eqNodeVarIndices[index] = cnVarIndices[i][j];
+                eqNodeVarIndices[index] = eqVarIndices[i][j];
                 ++index;
             }
         }
@@ -107,20 +107,24 @@ private:
         }
         // set pointers to relevant entries
         auto index = 0;
-        for (auto i = 0; i<eqNodeVarIndices.size(); ++i)
+        for (auto eqIdx = 0; eqIdx<eqNodeVarIndices.size(); ++eqIdx)
         {
             for (auto j = 0; j<eqNodeVarIndices[0].size(); ++j)
             {
-                eqNodeVarPtrs[index] = &varNodes[eqNodeVarIndices[i][j]];
+                auto varIdx = eqNodeVarIndices[eqIdx][j];
+                auto varNodesIdx = varIdx * numEqs + eqIdx;
+                eqNodeVarPtrs[index] = &varNodes[varNodesIdx];
                 ++index;
             }
         }
         index = 0;
-        for (auto i = 0; i<varNodeEqIndices.size(); ++i)
+        for (auto varIdx = 0; varIdx<varNodeEqIndices.size(); ++varIdx)
         {
             for (auto j = 0; j<varNodeEqIndices[0].size(); ++j)
             {
-                varNodeEqPtrs[index] = &eqNodes[varNodeEqIndices[i][j]];
+                auto eqIdx = varNodeEqIndices[varIdx][j];
+                auto eqNodesIdx = eqIdx * numVars + varIdx;
+                varNodeEqPtrs[index] = &eqNodes[eqNodesIdx];
                 ++index;
             }
         }
@@ -195,62 +199,8 @@ private:
             }
         }
     }
-//    static void EqNodeUpdate(float* eqNodesPtr, const float* varNodesPtr, const int* eqNodeVarIndicesPtr, 
-//        const int* syndromePtr, int numEqs, int numVars, int numVarsPerEq)
-//    {
-//        // For a check node interested in variables a,b,c,d to estimate the updated probability for variable a
-//        // syndrome = 0: even # of errors -> pa' = pb(1-pc)(1-pd) + pc(1-pb)(1-pd) + pd(1-pb)(1-pc) + pb*pc*pd
-//        //                                       = 0.5 * (1 - (1-2pb)(1-2pc)(1-2pd))
-//        // syndrome = 1: odd # of errors -> pa' = (1-pb)(1-pc)(1-pd) + pb*pc*(1-pd) + pb*(1-pc)*pd + (1-pb)*pc*pd
-//        //                                      = 0.5 * (1 + (1-2pb)(1-2pc)(1-2pd))
-//        std::vector<float> eqNodeVars(numEqs*numVarsPerEq);
-//        float* eqNodeVarsPtr = &eqNodeVars[0];
-//        // copy all values into temporary memory
-//#pragma omp parallel for
-//        for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx) // loop over check nodes (parity equations)
-//        {
-//            auto firstVarIdx = eqIdx*numVarsPerEq;
-//            // loop over variables to be updated for this check node
-//            for (auto i = 0; i < numVarsPerEq; ++i)
-//            {
-//                auto index = firstVarIdx + i; // 1d array index to look up the variable index
-//                auto varIdx = eqNodeVarIndicesPtr[index]; // variable index under investigation for this eq
-//                auto varNodesIndex = varIdx * numEqs + eqIdx;
-//                // each var for this eq should copy its value into temp array
-//                eqNodeVarsPtr[index] = varNodesPtr[varNodesIndex];
-//            }
-//        }
-//
-//#pragma omp parallel for
-//        for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx) // loop over check nodes (parity equations)
-//        {
-//            auto firstVarIdx = eqIdx*numVarsPerEq;
-//            // loop over variables to be updated for this check node
-//            for (auto i = 0; i < numVarsPerEq; ++i)
-//            {
-//                auto index = firstVarIdx + i; // 1d array index to look up the variable index
-//                auto varIdx = eqNodeVarIndicesPtr[index]; // variable index under investigation for this eq
-//                auto product = 1.0f; // reset product
-//                // loop over all other variables in the equation, accumulate (1-2p) terms
-//                for (auto k = 0; k < numVarsPerEq; ++k)
-//                {
-//                    if (k == i) continue; // skip the variable being updated
-//                    auto otherIndex = firstVarIdx + k; // 1d array index to look up the variable index
-//                    auto value = eqNodeVarsPtr[otherIndex]; // belief value for this variable and this eq
-//                    product *= (1.0f - 2.0f*value);
-//                }
-//                auto cnIdx = eqIdx * numVars + varIdx; // index for value within the check node array to update
-//                if (syndromePtr[eqIdx]) {
-//                    eqNodesPtr[cnIdx] = 0.5 * (1.0f + product); // syndrome = 1 -> odd parity
-//                }
-//                else {
-//                    eqNodesPtr[cnIdx] = 0.5f * (1.0f - product); // syndrome = 0 -> even parity
-//                }
-//            }
-//        }
-//    }
 
-    static void VarNodeUpdate(const float* eqNodesPtr, float* varNodesPtr, const int* varNodeEqIndicesPtr, 
+    static void VarNodeUpdate(float* varNodesPtr, float** varNodeEqPtrs, const int* varNodeEqIndicesPtr, 
         float errorProbability, bool last, int numEqs, int numVars, int numEqsPerVar)
     {
         // For a variable node connected to check nodes 1,2,3,4 use the following formula to send an estimate to var node 1
@@ -278,15 +228,10 @@ private:
                 // calculate the updated probability for this check node based on belief estimates of all OTHER check nodes
                 for (auto k = 0; k < numEqsPerVar; ++k)
                 {
-                    auto index2 = firstEqIndices + k; // 1d index for entry in the index array
-                    auto otherEQIdx = varNodeEqIndicesPtr[index2];
-                    //auto otherEQIdx = varNodeEqIndicesPtr.values[index2];
-
-                    if (otherEQIdx == eqIdx && !last) continue;
-                    // 1d index for check nodes belief being used
-                    auto checkNodesIdx = otherEQIdx * numVars + varIdx;
-                    auto p = eqNodesPtr[checkNodesIdx];
-                    //auto p = eqNodesPtr.values[checkNodesIdx];
+                    if (j == k && !last) continue;
+                    // 1d index for entry in value ptr array
+                    auto index2 = firstEqIndices + k; 
+                    auto p = *varNodeEqPtrs[index2];
 
                     prodOneMinusP *= (1.0f - p);
                     prodP *= p;
@@ -351,8 +296,7 @@ private:
         {
             if (converge) break;
             EqNodeUpdate(eqNodesPtr, eqNodeVarPtrs_p, eqNodeVarIndicesPtr, syndromePtr,  numEqs, numVars, numVarsPerEq);
-            VarNodeUpdate(eqNodesPtr, varNodesPtr, varNodeEqIndicesPtr, p, n == N - 1,numEqs,numVars,numEqsPerVar);
-            
+            VarNodeUpdate(eqNodesPtr, varNodeEqPtrs_p, varNodeEqIndicesPtr, p, n == N - 1,numEqs,numVars,numEqsPerVar);
 
             if (n % 10 == 0)
             {
