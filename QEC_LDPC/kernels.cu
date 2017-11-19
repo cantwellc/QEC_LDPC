@@ -1,4 +1,5 @@
 #include "kernels.cuh"
+#include <cstdio>
 
 //	Build the parity check matrix for code C (i.e. H_1), and dual code D (i.e. H_2) given parameters
 //	J: rows of C (must be > 1)
@@ -29,6 +30,65 @@ __global__ void buildHC_kernel(int J, int L, int P, int sigma, int invSigma, int
 	C[index] = t;
 }
 
+__global__ void beliefPropogation_kernel(float* eqNodes, float* varNodes, int* eqNodeVarIndices, int * varNodeEqIndices, 
+    int* syndrome, float errorProbability, int numVars, int numEqs, int numVarsPerEq, int numEqsPerVar, int maxIterations)
+{
+    if (threadIdx.x == 0) {
+        dim3 eqNodeGridDim(numEqs);  // number of blocks.
+        dim3 eqNodeBlockDim(numVarsPerEq); // number of threads per block
+        auto eqNodeMemSize = numVarsPerEq * sizeof(int);
+
+        dim3 varNodeGridDim(numVars);
+        dim3 varNodeBlockDim(numEqsPerVar);
+        auto varNodeMemSize2 = numEqsPerVar * sizeof(int);
+//        auto varNodeMemSize = numEqsPerVar * sizeof(float);
+
+        float high = 0.99f;
+        float low = 0.01f;
+        bool converge = false;
+        // we can potentially speed up here by performing the first eq node update outside the loop
+        // this will allow us to synchronize only once.  child threads see the global memory of the
+        // parent block at the time of launch. this gives us the potential to update var nodes and
+        // eq nodes in parallel.  we could hit a race condition if the execution of all var node threads
+        // completes before the eq nodes update is started.  this can be avoided by storing temporary 
+        // values in a buffer                            
+        
+
+        for (auto n = 0; n < maxIterations; n++)
+        {
+            if (converge) break;
+            // on the first execution we are doing the work twice for updating the eq nodes.
+            eqNodeUpdate_kernel <<<eqNodeGridDim, eqNodeBlockDim, eqNodeMemSize >>> (eqNodeVarIndices, eqNodes, varNodes,
+                syndrome, numVars, numEqs, numVarsPerEq);
+            cudaDeviceSynchronize();
+
+            varNodeUpdate2_kernel <<<varNodeGridDim, varNodeBlockDim, varNodeMemSize2 >>>
+                (varNodeEqIndices, eqNodes, varNodes, errorProbability, n == maxIterations - 1, numVars, numEqs, numEqsPerVar);
+            cudaDeviceSynchronize();
+
+            if (n % 10 == 0) {
+                converge = checkConvergence(varNodes, numVars, numEqs, high, low);
+            }
+        }
+    }
+}
+
+__device__ bool checkConvergence(float* varNodes, int numVars, int numEqs, float high, float low)
+{
+    for(int i=0; i<numVars; ++i)
+    {
+        for(int j=0; j<numEqs; ++j)
+        {
+            int idx = i*numEqs + j;
+            if(varNodes[idx] < high && varNodes[idx] > low)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 // Kernel for updating the check node belief matrix for
 // a single variable within a single check node.
 // queue kernel with a single block of dimension num_eqs x num_vars_per_eq
@@ -41,26 +101,32 @@ __global__ void eqNodeUpdate_kernel(int* eqNodeVarIndices, float* eqNodes, float
     // syndrome = 1: odd # of errors -> pa' = (1-pb)(1-pc)(1-pd) + pb*pc*(1-pd) + pb*(1-pc)*pd + (1-pb)*pc*pd
     //                                      = 0.5 * (1 + (1-2pb)(1-2pc)(1-2pd))
 
-    int eqIdx = threadIdx.x; // rows of the block represent the parity check equations
-    int i = threadIdx.y; // columns of the block represent the different variables involved in the eq.
+    //int eqIdx = threadIdx.x; // rows of the block represent the parity check equations
+    //int i = threadIdx.y; // columns of the block represent the different variables involved in the eq.
+    int eqIdx = blockIdx.x; // block index is the equation node we're updating
+    int i = threadIdx.x; // thread index is the column in the eqNodesVarIndices array we're looking at
+
+    // copy index array into shared memory
+    extern __shared__ int indices[];
     if (eqIdx < numEqs && i < numVarsPerEq) {
-//    if(true){
+
         // location of the first variable index in the eqNodeVarIndices array
         int firstVarIdx = eqIdx*numVarsPerEq;
-
         // location of the variable index in the eqNodeVarIndices array
         int index = firstVarIdx + i;
-
         // variable index under investigation for this eq
         int varIdx = eqNodeVarIndices[index];
+        indices[i] = varIdx;
+        __syncthreads();
 
         float product = 1.0f; // reset product
         // loop over all other variables in the equation, accumulate (1-2p) terms
         for (auto j = 0; j < numVarsPerEq; ++j)
         {
             if (j == i) continue; // skip the variable being updated
-            int otherIndex = firstVarIdx + j; // 1d array index to look up the variable index
-            int otherVarIdx = eqNodeVarIndices[otherIndex];
+//            int otherIndex = firstVarIdx + j; // 1d array index to look up the variable index
+//            int otherVarIdx = eqNodeVarIndices[otherIndex];
+            int otherVarIdx = indices[j];
 
             // the index holding the estimate being used for this eq
             int varNodesIndex = otherVarIdx * numEqs + eqIdx;
@@ -85,42 +151,95 @@ __global__ void eqNodeUpdate_kernel(int* eqNodeVarIndices, float* eqNodes, float
 // eqNodes holds the belief estimates each equation node has for each variable node. (0 if equation doesn't use variable)
 // varNodes holds the estimates each vaariable node has for each equation node. (0 if variable isn't used in equation)
 // errorProbability is the a priori channel error probability
-__global__ void varNodeUpdate_kernel(int *varNodeEqIndices, float *eqNodes, float * varNodes, 
+// launch numVars blocks, each block processes numEqsPerVar threads
+__global__ void varNodeUpdate_kernel(int * varNodeEqIndices, float* eqNodes, float * varNodes, 
     float errorProbability, bool last, int numVars, int numEqs, int numEqsPerVar)
 {
     // For a variable node connected to equation nodes 1,2,3,4 use the following formula to send an estimate to var node 1
     // p1' = K*pch*p2*p3*p4   (pch is the channel error probability. ignore the estimate received from check node 1 unless last)
     // where K = 1/[(1-pch)(1-p2)(1-p3)(1-p4)... + pch*p2*p3*p4...]
 
-    int varIdx = threadIdx.x; // variable index
-    int i = threadIdx.y; // location of the equation index for which we are updating the value in varNodes
+    // for efficiency, load memory into block shared memory.
+    // array to hold ordered belief estimates that each equation has for this variable
+    extern __shared__ float sharedEqBeliefs[]; 
 
-    if (varIdx < numVars && i < numEqsPerVar) {
-        int firstVarNode = varIdx * numEqs; // start of entries in VarNodes array for this variable
+    int varIdx = blockIdx.x; // variable index, row index for varNodeEqIndices array
+    int i = threadIdx.x; // column index for varNodeEqIndices array
+
+    if (varIdx < numVars && i < numEqsPerVar) { // skip if out of bounds
+
         int firstEqIndices = varIdx * numEqsPerVar; // starting point for first equation in the index list for this var.
+        int eqIdxLoc = firstEqIndices + i; // location in varNodesEqIndices for this eq index.
+        int eqIdx = varNodeEqIndices[eqIdxLoc]; // equation index being investigated in this thread
+        int eqNodeIdx = eqIdx * numVars + varIdx; // index for the belief estimate in the eqNodes arraay for this var
+        sharedEqBeliefs[i] = eqNodes[eqNodeIdx]; // store the belief value for this variable in shared memory
+        __syncthreads();
 
-        int eqIdxLoc = firstEqIndices + i;
-        // find the index of the equation estimate being updated
-        int eqIdx = varNodeEqIndices[eqIdxLoc];
+        int firstVarNode = varIdx * numEqs; // start of entries in VarNodes array for this variable
 
-        // 1d index for var nodes entry being updated
+        // 1d index for var nodes entry being updated (the estimate held for this eq)
         int varNodesIdx = firstVarNode + eqIdx;
 
         float prodP = errorProbability; // start with a priori channel error probability
         float prodOneMinusP = 1.0f - errorProbability;
 
-        // calculate the updated probability for this check node based on belief estimates of all OTHER check nodes
+        // calculate the updated probability for this eq node based on belief estimates of all OTHER eq nodes
         for (auto k = 0; k < numEqsPerVar; ++k)
         {
-            int eqIndexLoc2 = firstEqIndices + k; // 1d index for entry in the index array
-            int otherEQIdx = varNodeEqIndices[eqIndexLoc2];
+            if (k == i && !last) continue;
+            float p = sharedEqBeliefs[k];
+            prodOneMinusP *= (1.0f - p);
+            prodP *= p;
+        }
 
-            if (otherEQIdx == eqIdx && !last) continue;
-           
-            // 1d index for check nodes belief being used
-            int checkNodesIdx = otherEQIdx * numVars + varIdx;
-            float p = eqNodes[checkNodesIdx];
+        float value = prodP / (prodOneMinusP + prodP);
+        varNodes[varNodesIdx] = value;
+    }
+}
 
+// kernel for updating the variable node matrix
+// for a single variable belief corresponding to a single check node.
+// varNodeEqIndices holds the indices of the equations this variable is part of
+// eqNodes holds the belief estimates each equation node has for each variable node. (0 if equation doesn't use variable)
+// varNodes holds the estimates each vaariable node has for each equation node. (0 if variable isn't used in equation)
+// errorProbability is the a priori channel error probability
+// launch numVars blocks, each block processes numEqsPerVar threads
+__global__ void varNodeUpdate2_kernel(int * varNodeEqIndices, float* eqNodes, float * varNodes, 
+    float errorProbability, bool last, int numVars, int numEqs, int numEqsPerVar)
+{
+    // For a variable node connected to equation nodes 1,2,3,4 use the following formula to send an estimate to var node 1
+    // p1' = K*pch*p2*p3*p4   (pch is the channel error probability. ignore the estimate received from check node 1 unless last)
+    // where K = 1/[(1-pch)(1-p2)(1-p3)(1-p4)... + pch*p2*p3*p4...]
+
+    // for efficiency, load memory into block shared memory.
+    // array to hold ordered belief estimates that each equation has for this variable
+    extern __shared__ int indices[]; 
+
+    int varIdx = blockIdx.x; // variable index, row index for varNodeEqIndices array
+    int i = threadIdx.x; // column index for varNodeEqIndices array
+
+    if (varIdx < numVars && i < numEqsPerVar) { // skip if out of bounds
+
+        int firstEqIndices = varIdx * numEqsPerVar; // starting point for first equation in the index list for this var.
+        int eqIdxLoc = firstEqIndices + i; // location in varNodesEqIndices for this eq index.
+        int eqIdx = varNodeEqIndices[eqIdxLoc]; // equation index being investigated in this thread
+        indices[i] = eqIdx;
+        __syncthreads();
+
+        int varNodesStart = varIdx * numEqs; // start of entries in VarNodes array for this variable
+        // 1d index for var nodes entry being updated (the estimate held for this eq)
+        int varNodesIdx = varNodesStart + eqIdx;
+
+        float prodP = errorProbability; // start with a priori channel error probability
+        float prodOneMinusP = 1.0f - errorProbability;
+
+        // calculate the updated probability for this eq node based on belief estimates of all OTHER eq nodes
+        for (auto k = 0; k < numEqsPerVar; ++k)
+        {
+            if (k == i && !last) continue;
+            int otherEqIdx = indices[k];
+            int eqNodeIdx = otherEqIdx * numVars + varIdx; // index for the belief estimate in the eqNodes arraay for this var
+            float p = eqNodes[eqNodeIdx];
             prodOneMinusP *= (1.0f - p);
             prodP *= p;
         }
