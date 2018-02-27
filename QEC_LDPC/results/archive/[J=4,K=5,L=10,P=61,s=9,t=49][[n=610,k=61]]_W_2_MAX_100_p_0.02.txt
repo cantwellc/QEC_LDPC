@@ -1,0 +1,30 @@
+Code: [J=4,K=5,L=10,P=61,s=9,t=49][[n=610,k=61]]
+Rand Seed: 194704926
+Duration(micro-s): 76795560
+Errors Tested: 100000
+Errors With X: 88903
+Errors With Z: 88983
+Error Weight: 2
+Corrected: 100000
+Syndrome Errors X: 0
+Syndrome Errors Z: 0
+Logical Errors: 0
+Convergence Fail X: 0
+Convergence Fail Z: 0
+
+
+Code: [J=4,K=5,L=10,P=61,s=9,t=49][[n=610,k=61]]
+Rand Seed: 2125435392
+Duration(micro-s): 82449467
+Errors Tested: 100000
+Errors With X: 88931
+Errors With Z: 88794
+Error Weight: 2
+Corrected: 100000
+Syndrome Errors X: 0
+Syndrome Errors Z: 0
+Logical Errors: 0
+Convergence Fail X: 0
+Convergence Fail Z: 0
+
+

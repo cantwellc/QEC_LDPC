@@ -1,0 +1,56 @@
+
+Thu Feb 22 11:28:58 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2463884902
+Initializing run from file init.txt
+
+Thu Feb 22 11:42:53 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2463884902
+Initializing run from file init.txt
+
+Thu Feb 22 11:52:34 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Must provide initialization file.
+
+Thu Feb 22 12:52:56 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Must provide initialization file.
+
+Thu Feb 22 12:54:12 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Must provide initialization file.
+
+Thu Feb 22 12:54:23 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Must provide initialization file.
+
+Thu Feb 22 12:55:10 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Initializing run from file init.txt
+
+Thu Feb 22 12:57:56 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Initializing run from file init.txt

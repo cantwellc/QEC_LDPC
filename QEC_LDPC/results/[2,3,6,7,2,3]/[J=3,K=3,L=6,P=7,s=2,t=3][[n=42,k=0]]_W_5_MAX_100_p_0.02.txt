@@ -1,0 +1,15 @@
+Code: [J=3,K=3,L=6,P=7,s=2,t=3][[n=42,k=0]]
+Rand Seed: 2897635183
+Duration(micro-s): 4163932
+Errors Tested: 100000
+Errors With X: 99600
+Errors With Z: 99590
+Error Weight: 5
+Corrected: 11715
+Syndrome Errors X: 31572
+Syndrome Errors Z: 31093
+Logical Errors: 34855
+Convergence Fail X: 20338
+Convergence Fail Z: 20146
+
+

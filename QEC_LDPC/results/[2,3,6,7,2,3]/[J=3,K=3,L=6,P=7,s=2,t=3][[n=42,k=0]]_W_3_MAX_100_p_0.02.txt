@@ -1,0 +1,45 @@
+Code: [J=3,K=3,L=6,P=7,s=2,t=3][[n=42,k=0]]
+Rand Seed: 2596423950
+Duration(micro-s): 2065414
+Errors Tested: 100000
+Errors With X: 96258
+Errors With Z: 96337
+Error Weight: 3
+Corrected: 50962
+Syndrome Errors X: 19367
+Syndrome Errors Z: 18974
+Logical Errors: 14348
+Convergence Fail X: 2323
+Convergence Fail Z: 2128
+
+
+Code: [J=3,K=3,L=6,P=7,s=2,t=3][[n=42,k=0]]
+Rand Seed: 1000746079
+Duration(micro-s): 2049597
+Errors Tested: 100000
+Errors With X: 96277
+Errors With Z: 96196
+Error Weight: 3
+Corrected: 51042
+Syndrome Errors X: 19401
+Syndrome Errors Z: 18759
+Logical Errors: 14373
+Convergence Fail X: 2287
+Convergence Fail Z: 2017
+
+
+Code: [J=3,K=3,L=6,P=7,s=2,t=3][[n=42,k=0]]
+Rand Seed: 2881811342
+Duration(micro-s): 2089236
+Errors Tested: 100000
+Errors With X: 96344
+Errors With Z: 96254
+Error Weight: 3
+Corrected: 51282
+Syndrome Errors X: 19326
+Syndrome Errors Z: 18958
+Logical Errors: 14021
+Convergence Fail X: 2271
+Convergence Fail Z: 2115
+
+

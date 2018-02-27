@@ -1,0 +1,11 @@
+Code: code: J=2,K=3,L=6,P=7,sigma=2,tau=3 [[n=42,k=7]]
+Rand Seed: 153887220
+Duration(micro-s): 2565472
+Errors Tested: 100000
+Error Weight: 4
+Corrected: 16788
+Syndrome Errors X: 74141
+Syndrome Errors Z: 31354
+Logical Errors: 0
+Convergence Fail X: 74141
+Convergence Fail Z: 16468
