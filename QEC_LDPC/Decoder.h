@@ -43,5 +43,7 @@ public:
     }
     virtual CodeStatistics GetStatistics(int errorWeight, int numErrors, float errorProbability, 
         int maxIterations) = 0;
+    virtual CodeStatistics GetStatistics(int errorWeight, int numErrors, float errorProbability,
+        int maxIterations, unsigned int seed) = 0;
 };
 

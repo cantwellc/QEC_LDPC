@@ -3,6 +3,8 @@
 #include "ArrayOutput.h"
 #include <omp.h>
 #include "CodeStatistics.h"
+#include <random>
+#include <chrono>
 
 class DecoderCPU :
     public Decoder
@@ -145,7 +147,7 @@ private:
         }
     }
 
-    static void EqNodeUpdate(float* eqNodesPtr, float** eqNodeVarPtrs, const int* eqNodeVarIndicesPtr,
+    static void EqNodeUpdate(float* eqNodesPtr, FloatPtrArray2d& eqNodeVarPtrs, const int* eqNodeVarIndicesPtr,
         const int* syndromePtr, int numEqs, int numVars, int numVarsPerEq)
     {
         // For a check node interested in variables a,b,c,d to estimate the updated probability for variable a
@@ -153,23 +155,6 @@ private:
         //                                       = 0.5 * (1 - (1-2pb)(1-2pc)(1-2pd))
         // syndrome = 1: odd # of errors -> pa' = (1-pb)(1-pc)(1-pd) + pb*pc*(1-pd) + pb*(1-pc)*pd + (1-pb)*pc*pd
         //                                      = 0.5 * (1 + (1-2pb)(1-2pc)(1-2pd))
-//        std::vector<float> eqNodeVars(numEqs*numVarsPerEq);
-//        float* eqNodeVarsPtr = &eqNodeVars[0];
-//        // copy all values into temporary memory
-//#pragma omp parallel for
-//        for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx) // loop over check nodes (parity equations)
-//        {
-//            auto firstVarIdx = eqIdx*numVarsPerEq;
-//            // loop over variables to be updated for this check node
-//            for (auto i = 0; i < numVarsPerEq; ++i)
-//            {
-//                auto index = firstVarIdx + i; // 1d array index to look up the variable index
-//                auto varIdx = eqNodeVarIndicesPtr[index]; // variable index under investigation for this eq
-//                auto varNodesIndex = varIdx * numEqs + eqIdx;
-//                // each var for this eq should copy its value into temp array
-//                eqNodeVarsPtr[index] = varNodesPtr[varNodesIndex];
-//            }
-//        }
 
 #pragma omp parallel for
         for (auto eqIdx = 0; eqIdx < numEqs; ++eqIdx) // loop over check nodes (parity equations)
@@ -186,7 +171,7 @@ private:
                 {
                     if (k == i) continue; // skip the variable being updated
                     auto otherIndex = firstVarIdx + k; // 1d array index to look up the variable index
-                    auto value = *eqNodeVarPtrs[otherIndex]; // belief value for this variable and this eq
+                    float value = *eqNodeVarPtrs[otherIndex]; // belief value for this variable and this eq
                     product *= (1.0f - 2.0f*value);
                 }
                 auto eqNodeIdx = eqIdx * numVars + varIdx; // index for value within the check node array to update
@@ -200,7 +185,7 @@ private:
         }
     }
 
-    static void VarNodeUpdate(float* varNodesPtr, float** varNodeEqPtrs, const int* varNodeEqIndicesPtr, 
+    static void VarNodeUpdate(float* varNodesPtr, FloatPtrArray2d& varNodeEqPtrs, const int* varNodeEqIndicesPtr, 
         float errorProbability, bool last, int numEqs, int numVars, int numEqsPerVar)
     {
         // For a variable node connected to check nodes 1,2,3,4 use the following formula to send an estimate to var node 1
@@ -231,7 +216,7 @@ private:
                     if (j == k && !last) continue;
                     // 1d index for entry in value ptr array
                     auto index2 = firstEqIndices + k; 
-                    auto p = *varNodeEqPtrs[index2];
+                    float p = *varNodeEqPtrs[index2];
 
                     prodOneMinusP *= (1.0f - p);
                     prodP *= p;
@@ -286,18 +271,19 @@ private:
         auto eqNodeVarIndicesPtr = &eqNodeVarIndices[0];
         auto varNodeEqIndicesPtr = &varNodeEqIndices[0];
         auto syndromePtr = &syndrome[0];
-        float** eqNodeVarPtrs_p = &eqNodeVarPtrs[0];
-        auto varNodeEqPtrs_p = &varNodeEqPtrs[0];
 
         auto N = maxIterations; // maximum number of iterations
         bool converge= false;
-
+        //int tid = omp_get_thread_num();
+        //std::string vnFile = "results/varNodesTest_" + std::to_string(tid) + ".txt";
+        //std::string enFile = "results/eqNodesTest_" + std::to_string(tid) + ".txt";
         for (auto n = 0; n < N; n++)
         {
             if (converge) break;
-            EqNodeUpdate(eqNodesPtr, eqNodeVarPtrs_p, eqNodeVarIndicesPtr, syndromePtr,  numEqs, numVars, numVarsPerEq);
-            VarNodeUpdate(eqNodesPtr, varNodeEqPtrs_p, varNodeEqIndicesPtr, p, n == N - 1,numEqs,numVars,numEqsPerVar);
-
+            EqNodeUpdate(eqNodesPtr, eqNodeVarPtrs, eqNodeVarIndicesPtr, syndromePtr,  numEqs, numVars, numVarsPerEq);
+            VarNodeUpdate(varNodesPtr, varNodeEqPtrs, varNodeEqIndicesPtr, p, n == N - 1,numEqs,numVars,numEqsPerVar);
+            //WriteToFile(varNodes, vnFile.c_str(), numVars, numEqs);
+            //WriteToFile(eqNodes, enFile.c_str(), numVars, numEqs);
             if (n % 10 == 0)
             {
                 converge = CheckConvergence(varNodesPtr, high, low, numVars, numEqs);
@@ -403,10 +389,8 @@ public:
         return code;
     }
 
-    CodeStatistics GetStatistics(int errorWeight, int numErrors, float errorProbability, 
-        int maxIterations) override{
-        std::random_device rd; // random seed for mersene twister engine.  could use this exclusively, but mt is faster
-        unsigned int seed = rd();
+    CodeStatistics GetStatistics(int errorWeight, int numErrors, float errorProbability,
+        int maxIterations, unsigned int seed) override {
         std::mt19937 mt(seed); // engine to produce random number
         std::uniform_int_distribution<int> indexDist(0, _code.n - 1); // distribution for rng of index where errror occurs
         std::uniform_int_distribution<int> errorDist(0, 2); // distribution for rng of error type. x=0, y=1, z=2
@@ -415,9 +399,10 @@ public:
         int convergenceFailZ = 0;
         int syndromeErrorX = 0;
         int syndromeErrorZ = 0;
-        int logicalErrorX = 0;
-        int logicalErrorZ = 0;
+        int logicalError = 0;
         int corrected = 0;
+        int xErrorsTested = 0;
+        int zErrorsTested = 0;
 
         int W = errorWeight;
         int COUNT = numErrors;
@@ -427,21 +412,21 @@ public:
         omp_init_lock(&randLock);
 
         int nThreads;
-        int count; 
-        
+        int count;
+
         auto start = std::chrono::high_resolution_clock::now();
 
 #pragma omp parallel 
         {
             int tID = omp_get_thread_num();
-            if(tID == 0)
+            if (tID == 0)
             {
                 nThreads = omp_get_num_threads();
                 std::cout << "Thread count: " << nThreads << std::endl;
                 count = COUNT / nThreads;
             }
 #pragma omp barrier
-            
+
 
             DecoderCPU decoder(_code);
             IntArray1d xErrors(_code.n, 0);
@@ -451,13 +436,13 @@ public:
             IntArray1d zDecodedErrors(_code.n, 0);
 
             for (int c = 0; c < count; ++c) {
-                
+
                 // clear all containers
                 thrust::fill(xErrors.begin(), xErrors.end(), 0);
                 thrust::fill(zErrors.begin(), zErrors.end(), 0);
                 thrust::fill(xDecodedErrors.begin(), xDecodedErrors.end(), 0);
                 thrust::fill(zDecodedErrors.begin(), zDecodedErrors.end(), 0);
-  
+
                 // construct random error string
                 // lock the thread here to ensure reproducable errors given a seed
                 omp_set_lock(&randLock);
@@ -475,12 +460,57 @@ public:
 
                 auto sx = _code.GetSyndromeX(xErrors);
                 auto sz = _code.GetSyndromeZ(zErrors);
+                //
+                bool nxE = std::all_of(xErrors.begin(), xErrors.end(), [](int i) { return i == 0; });
+                bool nzE = std::all_of(zErrors.begin(), zErrors.end(), [](int i) { return i == 0; });
+                if (!nxE) {
+#pragma omp atomic
+                    xErrorsTested++;
+                }
+                if (!nzE) {
+#pragma omp atomic
+                    zErrorsTested++;
+                }
 
                 IntArray1d sx1(sx.begin(), sx.end());
                 IntArray1d sz1(sz.begin(), sz.end());
                 auto errorCode = decoder.Decode(sx1, sz1, errorProbability, MAX_ITERATIONS, xDecodedErrors, zDecodedErrors);
-             
-                // increment error or corrected counters
+
+                // check for detected syndrome errors
+                bool dEX = errorCode & Decoder::SYNDROME_FAIL_X;
+                if (dEX) {
+#pragma omp atomic
+                    syndromeErrorX++;
+                }
+                bool dEZ = errorCode & Decoder::SYNDROME_FAIL_Z;
+                if (dEZ) {
+#pragma omp atomic
+                    syndromeErrorZ++;
+                }
+
+                // check the decoded errors for a logical error
+                if (!(dEX || dEZ)) {
+                    // this wasn't a detected error, could be logical error
+                    // apply correction. mod 2 addition of error with decoded error
+                    IntArray1d errors(xErrors.size() + zErrors.size());
+                    for (int i = 0; i < xErrors.size(); ++i)
+                        errors[i] = (xErrors[i] + xDecodedErrors[i]) % 2;
+                    for (int i = 0; i < zErrors.size(); ++i)
+                        errors[xErrors.size() + i] = (zErrors[i] + zDecodedErrors[i]) % 2;
+                    bool lE = _code.CheckLogicalError(errors);
+                    if (lE) {
+#pragma omp atomic
+                        logicalError++;
+                    }
+                    else
+                    {// this wasn't a detected error or logical error. must be corrected
+#pragma omp atomic
+                        corrected++;
+                    }
+                }
+
+                // increment convergence failure counters. it can fail to converge
+                // and still potentially produce a correct output.
                 if (errorCode & Decoder::CONVERGENCE_FAIL_X) {
 #pragma omp atomic
                     convergenceFailX++;
@@ -489,84 +519,21 @@ public:
 #pragma omp atomic
                     convergenceFailZ++;
                 }
-
-                if (errorCode & Decoder::SYNDROME_FAIL_X) {
-#pragma omp atomic
-                    syndromeErrorX++;
-                }
-                if (errorCode & Decoder::SYNDROME_FAIL_Z) {
-#pragma omp atomic
-                    syndromeErrorZ++;
-                }
-
-                if (!(errorCode & Decoder::SYNDROME_FAIL_XZ))
-                { 
-                    // the decoder thinks it correctly decoded the error
-                    // check for logical errors
-                    // If the diffference between the decoded error and actual error
-                    // is in the row space of the code words, and is not zero, but it
-                    // has the same syndrome as the actual error then it is a logical
-                    // error.
-                    IntArray1d xDiff(_code.n, 0);
-                    IntArray1d zDiff(_code.n, 0);
-
-                    bool xIsDiff = false;
-                    bool zIsDiff = false;
-                    for (auto i = 0; i < _code.n; ++i)
-                    {
-                        if (xErrors[i] != xDecodedErrors[i]) {
-                            xDiff[i] = 1;
-                            xIsDiff = true;
-                        }
-                        if (zErrors[i] != zDecodedErrors[i]) {
-                            zIsDiff = true;
-                            zDiff[i] = 1;
-                        }
-                    }
-                    if (xIsDiff || zIsDiff) {
-                        // the decoded error string can differ from the original by a stabilizer and still be decodeable.
-                        // however, if it falls outside the stabilizer group it is a logical error. for stabilizer elements
-                        // H e = 0.
-                        auto xDiffSyndrome = _code.GetSyndromeX(xDiff);
-                        auto zDiffSyndrome = _code.GetSyndromeZ(zDiff);
-
-                        bool xLogicalError = false;
-                        bool zLogicalError = false;
-                        for (int i = 0; i < xDiffSyndrome.size(); ++i)
-                        {
-                            if (xDiffSyndrome[i] != 0) {
-                                xLogicalError = true;
-                            }
-                            if (zDiffSyndrome[i] != 0) {
-                                zLogicalError = true;
-                            }
-                        }
-                        if (xLogicalError) {
-#pragma omp atomic
-                            logicalErrorX++;
-                        }
-                        if (zLogicalError) {
-#pragma omp atomic
-                            logicalErrorZ++;
-                        }
-                        if (!xLogicalError && !zLogicalError) {
-#pragma omp atomic
-                            corrected++;
-                        }
-                    }
-                    else
-                    {
-#pragma omp atomic
-                        corrected++;
-                    }
-                }
             }
         }
+
         auto finish = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(finish - start).count();
-        CodeStatistics stats = {_code,seed,count * nThreads,W,corrected,syndromeErrorX,syndromeErrorZ,logicalErrorX,logicalErrorZ,
-            convergenceFailX,convergenceFailZ, duration};
+        CodeStatistics stats = { _code,seed,count * nThreads, xErrorsTested, zErrorsTested, W,corrected,syndromeErrorX,syndromeErrorZ,logicalError,
+            convergenceFailX,convergenceFailZ, duration };
         return stats;
+    }
+
+    CodeStatistics GetStatistics(int errorWeight, int numErrors, float errorProbability, 
+        int maxIterations) override{
+        std::random_device rd; // random seed for mersene twister engine.  could use this exclusively, but mt is faster
+        unsigned int seed = rd();
+        return GetStatistics(errorWeight, numErrors, errorProbability, maxIterations, seed);
     }
 };
 

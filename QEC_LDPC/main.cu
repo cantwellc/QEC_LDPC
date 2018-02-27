@@ -2,27 +2,21 @@
 #include <cusp/version.h>
 #include <iostream>
 #include <iomanip>
-//#include "QC_LDPC_CSS.h"
-#include <random>
 #include <chrono>
 #include <cuda_runtime_api.h>
 #include "Quantum_LDPC_Code.h"
 #include "DecoderCPU.h"
 #include "ArrayOutput.h"
-#include <omp.h>
-#include "DecoderGPU.h"
 
-int main(void)
+void printCudaInfoToLog(std::ofstream& log)
 {
-	//	int cuda_major = CUDA_VERSION / 1000;
-	//	int cuda_minor = (CUDA_VERSION % 1000) / 10;
-	int thrust_major = THRUST_MAJOR_VERSION;
-	int thrust_minor = THRUST_MINOR_VERSION;
-	int cusp_major = CUSP_MAJOR_VERSION;
-	int cusp_minor = CUSP_MINOR_VERSION;
-	//	std::cout << "CUDA   v" << cuda_major << "." << cuda_minor << std::endl;
-	std::cout << "Thrust v" << thrust_major << "." << thrust_minor << std::endl;
-	std::cout << "Cusp   v" << cusp_major << "." << cusp_minor << std::endl;
+    int thrust_major = THRUST_MAJOR_VERSION;
+    int thrust_minor = THRUST_MINOR_VERSION;
+    int cusp_major = CUSP_MAJOR_VERSION;
+    int cusp_minor = CUSP_MINOR_VERSION;
+
+    log << "Thrust v" << thrust_major << "." << thrust_minor << std::endl;
+    log << "Cusp   v" << cusp_major << "." << cusp_minor << std::endl;
 
     int nDevices;
 
@@ -41,179 +35,84 @@ int main(void)
         size_t mem_tot;
         size_t mem_free;
         cudaMemGetInfo(&mem_free, &mem_tot);
-        std::cout << "Total Memory : " << mem_tot << std::endl;
-        std::cout << "Free memory : " << mem_free << std::endl;
+        log << "Total Memory : " << mem_tot << std::endl;
+        log << "Free memory : " << mem_free << std::endl;
     }
-    
-    std::cout << std::endl;
-	
-	int J = 2; // rows of Hc 
-	int K = 3; // rows of Hd
-	int L = 6; // cols 
-	int P = 7;
-	int sigma = 2;
-	int tau = 3;
-
-    //QC_LDPC_CSS code(J, K, L, P, sigma, tau);
-    Quantum_LDPC_Code code(J, K, L, P, sigma, tau);
-    //DecoderGPU decoder(code);
-    DecoderCPU decoder(code);
-
-	// Given the code, generate N strings of weight W dephasing errors and attempt to decode.
-	// Record success or failure.
-	// generate a random string of Weight N errors, then decide whether it is x, y, or z
-	int numVars = P*L;
-
-    std::random_device rd; // random seed or mersene twister engine.  could use this exclusively, but mt is faster
-    std::mt19937 mt(rd()); // engine to produce random number
-    std::uniform_int_distribution<int> indexDist(0, numVars - 1); // distribution for rng of index where errror occurs
-    std::uniform_int_distribution<int> errorDist(0, 2); // distribution for rng of error type. x=0, y=1, z=2
-
-    IntArray1d_h xErrors(numVars, 0);
-    IntArray1d_h zErrors(numVars, 0);
-
-    IntArray1d_h xDecodedErrors(numVars, 0);
-    IntArray1d_h zDecodedErrors(numVars, 0);
-
-    int W = 1;
-    int COUNT = 1000;
-    int MAX_ITERATIONS = 1000;
-
-    for(auto w = 1; w <= W; ++w)
-    {
-        std::stringstream fileName;
-        fileName << "results/ResultsCPU_RELEASE_" << w << ".txt";
-        std::cout << fileName.str() << std::endl;
-        std::ofstream outFile;
-        outFile.open(fileName.str());
-        auto stats = decoder.GetStatistics(w, COUNT, 0.02f, MAX_ITERATIONS);
-        outFile << stats;
-        outFile.close();
-    }
-	return 0;
 }
 
-//
-//#include "cuda_runtime.h"
-//#include "device_launch_parameters.h"
-//#include "QC_LDPC_CSS.h"
-//#include <cusp\version.h>
-//
-//#include <stdio.h>
-//
-//cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
-//
-//__global__ void addKernel(int *c, const int *a, const int *b)
-//{
-//    int i = threadIdx.x;
-//    c[i] = a[i] + b[i];
-//}
-//
-//int main()
-//{
-//    const int arraySize = 5;
-//    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-//    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-//    int c[arraySize] = { 0 };
-//
-//
-//    // Add vectors in parallel.
-//    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "addWithCuda failed!");
-//        return 1;
-//    }
-//
-//    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-//        c[0], c[1], c[2], c[3], c[4]);
-//
-//    // cudaDeviceReset must be called before exiting in order for profiling and
-//    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-//    cudaStatus = cudaDeviceReset();
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaDeviceReset failed!");
-//        return 1;
-//    }
-//
-//    return 0;
-//}
-//
-//// Helper function for using CUDA to add vectors in parallel.
-//cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
-//{
-//    int *dev_a = 0;
-//    int *dev_b = 0;
-//    int *dev_c = 0;
-//    cudaError_t cudaStatus;
-//
-//    // Choose which GPU to run on, change this on a multi-GPU system.
-//    cudaStatus = cudaSetDevice(0);
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
-//        goto Error;
-//    }
-//
-//    // Allocate GPU buffers for three vectors (two input, one output)    .
-//    cudaStatus = cudaMalloc((void**)&dev_c, size * sizeof(int));
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaMalloc failed!");
-//        goto Error;
-//    }
-//
-//    cudaStatus = cudaMalloc((void**)&dev_a, size * sizeof(int));
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaMalloc failed!");
-//        goto Error;
-//    }
-//
-//    cudaStatus = cudaMalloc((void**)&dev_b, size * sizeof(int));
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaMalloc failed!");
-//        goto Error;
-//    }
-//
-//    // Copy input vectors from host memory to GPU buffers.
-//    cudaStatus = cudaMemcpy(dev_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaMemcpy failed!");
-//        goto Error;
-//    }
-//
-//    cudaStatus = cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaMemcpy failed!");
-//        goto Error;
-//    }
-//
-//    // Launch a kernel on the GPU with one thread for each element.
-//    addKernel<<<1, size>>>(dev_c, dev_a, dev_b);
-//
-//    // Check for any errors launching the kernel
-//    cudaStatus = cudaGetLastError();
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-//        goto Error;
-//    }
-//    
-//    // cudaDeviceSynchronize waits for the kernel to finish, and returns
-//    // any errors encountered during the launch.
-//    cudaStatus = cudaDeviceSynchronize();
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-//        goto Error;
-//    }
-//
-//    // Copy output vector from GPU buffer to host memory.
-//    cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
-//    if (cudaStatus != cudaSuccess) {
-//        fprintf(stderr, "cudaMemcpy failed!");
-//        goto Error;
-//    }
-//
-//Error:
-//    cudaFree(dev_c);
-//    cudaFree(dev_a);
-//    cudaFree(dev_b);
-//    
-//    return cudaStatus;
-//}
+int main(int argc, char** argv)
+{
+    std::ofstream log;
+    log.open("output_log.txt", std::ios::app);
+    if(!log.is_open())
+    {
+        throw std::string ("Unable to open output log file");
+    }
+    std::time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    log << std::endl << std::ctime(&ts);
+
+    printCudaInfoToLog(log);
+
+    if(argc != 2) {
+        log << "Must provide initialization file." << std::endl;
+        log.close();
+        exit(0);
+    }
+    std::string initFile = argv[1];
+    std::ifstream init(initFile);
+    
+    if(!init.is_open())
+    {
+        log << "Unable to open init file \"" << initFile 
+        << "\". Please make sure the file exists in the current directory." << std::endl;
+        log.close();
+        exit(0);
+    }
+    
+    log << "Initializing run from file " << initFile << std::endl;
+    
+    std::string codeFile;
+    init >> codeFile;
+
+    try {
+        Quantum_LDPC_Code code = Quantum_LDPC_Code::createFromFile(codeFile);
+        DecoderCPU decoder(code);
+
+        int w, W, COUNT, MAX_ITERATIONS;
+        float p;
+
+        init >> w;
+        init >> W;
+        init >> COUNT;
+        init >> MAX_ITERATIONS;
+        init >> p;
+        init.close();
+
+        for (;w <= W;++w)
+        {
+            std::stringstream fileName;
+            fileName << "results/" << code << "_W_" << w << "_MAX_" << MAX_ITERATIONS << "_p_" << p << ".txt";
+            auto str = fileName.str();
+            auto end = std::remove(str.begin(), str.end(), ' ');
+            str.erase(end, str.end());
+            std::cout << str << std::endl;
+            std::ofstream outFile;
+            outFile.open(fileName.str(), std::ios_base::app);
+            auto stats = decoder.GetStatistics(w, COUNT, p, MAX_ITERATIONS);
+            outFile << stats << std::endl << std::endl;
+            outFile.close();
+        }
+
+    }catch(std::string s)
+    {
+        log << s << std::endl;
+        log.close();
+        init.close();
+        exit(0);
+    }
+
+    log << "Run complete." << std::endl;
+    log.close();
+
+	return 1;
+}

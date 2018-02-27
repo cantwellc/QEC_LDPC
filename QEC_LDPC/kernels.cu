@@ -249,3 +249,17 @@ __global__ void varNodeUpdate2_kernel(int * varNodeEqIndices, float* eqNodes, fl
     }
 }
 
+__device__ void generateSyndrome(int* errorString, int numQubits, int* pcm, int* syndrome)
+{
+    
+}
+
+__global__ void getStats_kernel(int* pcmX, int* pcmZ, int* eqNodeVarIndices, int* varNodeEqIndices, float* eqNodes, float* varNodes, 
+    int* errorsX, int* errorsZ, int numErrors, int numVars, int numEqs, int numVarsPerEq)
+{
+    // loop over errors, generate a syndrome, decode, and update statistics
+    for(int i=0; i<numErrors; ++i)
+    {
+        
+    }
+}
