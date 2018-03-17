@@ -1,5 +1,5 @@
-#include <thrust/version.h>
-#include <cusp/version.h>
+//#include <thrust/version.h>
+//#include <cusp/version.h>
 #include <iostream>
 #include <iomanip>
 #include <chrono>
@@ -8,37 +8,37 @@
 #include "DecoderCPU.h"
 #include "ArrayOutput.h"
 
-void printCudaInfoToLog(std::ofstream& log)
-{
-    int thrust_major = THRUST_MAJOR_VERSION;
-    int thrust_minor = THRUST_MINOR_VERSION;
-    int cusp_major = CUSP_MAJOR_VERSION;
-    int cusp_minor = CUSP_MINOR_VERSION;
-
-    log << "Thrust v" << thrust_major << "." << thrust_minor << std::endl;
-    log << "Cusp   v" << cusp_major << "." << cusp_minor << std::endl;
-
-    int nDevices;
-
-    cudaGetDeviceCount(&nDevices);
-    for (int i = 0; i < nDevices; i++) {
-        cudaDeviceProp prop;
-        cudaGetDeviceProperties(&prop, i);
-        printf("Device Number: %d\n", i);
-        printf("  Device name: %s\n", prop.name);
-        printf("  Memory Clock Rate (KHz): %d\n",
-            prop.memoryClockRate);
-        printf("  Memory Bus Width (bits): %d\n",
-            prop.memoryBusWidth);
-        printf("  Peak Memory Bandwidth (GB/s): %f\n\n",
-            2.0*prop.memoryClockRate*(prop.memoryBusWidth / 8) / 1.0e6);
-        size_t mem_tot;
-        size_t mem_free;
-        cudaMemGetInfo(&mem_free, &mem_tot);
-        log << "Total Memory : " << mem_tot << std::endl;
-        log << "Free memory : " << mem_free << std::endl;
-    }
-}
+//void printCudaInfoToLog(std::ofstream& log)
+//{
+//    int thrust_major = THRUST_MAJOR_VERSION;
+//    int thrust_minor = THRUST_MINOR_VERSION;
+//    int cusp_major = CUSP_MAJOR_VERSION;
+//    int cusp_minor = CUSP_MINOR_VERSION;
+//
+//    log << "Thrust v" << thrust_major << "." << thrust_minor << std::endl;
+//    log << "Cusp   v" << cusp_major << "." << cusp_minor << std::endl;
+//
+//    int nDevices;
+//
+//    cudaGetDeviceCount(&nDevices);
+//    for (int i = 0; i < nDevices; i++) {
+//        cudaDeviceProp prop;
+//        cudaGetDeviceProperties(&prop, i);
+//        printf("Device Number: %d\n", i);
+//        printf("  Device name: %s\n", prop.name);
+//        printf("  Memory Clock Rate (KHz): %d\n",
+//            prop.memoryClockRate);
+//        printf("  Memory Bus Width (bits): %d\n",
+//            prop.memoryBusWidth);
+//        printf("  Peak Memory Bandwidth (GB/s): %f\n\n",
+//            2.0*prop.memoryClockRate*(prop.memoryBusWidth / 8) / 1.0e6);
+//        size_t mem_tot;
+//        size_t mem_free;
+//        cudaMemGetInfo(&mem_free, &mem_tot);
+//        log << "Total Memory : " << mem_tot << std::endl;
+//        log << "Free memory : " << mem_free << std::endl;
+//    }
+//}
 
 int main(int argc, char** argv)
 {
@@ -51,7 +51,7 @@ int main(int argc, char** argv)
     std::time_t ts = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     log << std::endl << std::ctime(&ts);
 
-    printCudaInfoToLog(log);
+//    printCudaInfoToLog(log);
 
     if(argc != 2) {
         log << "Must provide initialization file." << std::endl;

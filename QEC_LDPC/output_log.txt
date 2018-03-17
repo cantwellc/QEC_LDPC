@@ -54,3 +54,25 @@ Cusp   v0.6
 Total Memory : 3221225472
 Free memory : 2464933478
 Initializing run from file init.txt
+
+Tue Feb 27 12:44:13 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Initializing run from file init.txt
+
+Tue Feb 27 12:49:41 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Initializing run from file init.txt
+
+Tue Feb 27 12:49:55 2018
+Thrust v1.8
+Cusp   v0.6
+Total Memory : 3221225472
+Free memory : 2464933478
+Initializing run from file init.txt
+Run complete.

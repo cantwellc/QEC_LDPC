@@ -258,8 +258,11 @@ __global__ void getStats_kernel(int* pcmX, int* pcmZ, int* eqNodeVarIndices, int
     int* errorsX, int* errorsZ, int numErrors, int numVars, int numEqs, int numVarsPerEq)
 {
     // loop over errors, generate a syndrome, decode, and update statistics
+    int syndromeX[numEqs];
     for(int i=0; i<numErrors; ++i)
     {
-        
+        // get syndrome
+        // decode
+        // update statistics
     }
 }
